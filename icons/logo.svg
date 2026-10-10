@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0062E6"/>
+      <stop offset="50%" stop-color="#33AEFF"/>
+      <stop offset="100%" stop-color="#00EB88"/>
+    </linearGradient>
+
+    <!-- Squircle Shadow -->
+    <filter id="drop-shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#001833" flood-opacity="0.35"/>
+    </filter>
+
+    <!-- Glass Inner Shadow / Highlights -->
+    <linearGradient id="glass-glare" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.0"/>
+    </linearGradient>
+
+    <!-- Arrow Gradient -->
+    <linearGradient id="arrow-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E8F4FD"/>
+    </linearGradient>
+  </defs>
+
+  <!-- iOS / macOS Squircle Shape -->
+  <rect x="32" y="32" width="448" height="448" rx="104" fill="url(#bg-grad)" filter="url(#drop-shadow)"/>
+  
+  <!-- Subtle Top Specular Sheen -->
+  <rect x="32" y="32" width="448" height="224" rx="104" fill="url(#glass-glare)"/>
+
+  <!-- Compass Needle / Safari Accent Rings -->
+  <circle cx="256" cy="256" r="168" fill="none" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="6" stroke-dasharray="16 12"/>
+  <circle cx="256" cy="256" r="136" fill="#001830" fill-opacity="0.28"/>
+
+  <!-- Film Reel / Video Playback Ring Arc -->
+  <path d="M 170 256 A 86 86 0 0 1 342 256" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-opacity="0.85"/>
+
+  <!-- Main Streamlined Download Arrow -->
+  <g id="download-arrow">
+    <!-- Arrow Shaft -->
+    <rect x="236" y="160" width="40" height="110" rx="8" fill="url(#arrow-grad)"/>
+    <!-- Arrow Head -->
+    <path d="M 190 250 L 256 316 L 322 250 Z" fill="url(#arrow-grad)"/>
+    <!-- Catch Tray / Base Bar -->
+    <path d="M 180 344 L 332 344" stroke="url(#arrow-grad)" stroke-width="20" stroke-linecap="round"/>
+  </g>
+
+  <!-- Pulsing Progress Indicator Dots -->
+  <circle cx="216" cy="388" r="7" fill="#FFFFFF" fill-opacity="0.9"/>
+  <circle cx="256" cy="388" r="9" fill="#00EB88"/>
+  <circle cx="296" cy="388" r="7" fill="#FFFFFF" fill-opacity="0.9"/>
+</svg>
