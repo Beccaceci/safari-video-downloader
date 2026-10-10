@@ -1,0 +1,486 @@
+/* Safari Video Downloader - In-page UI Styles */
+
+.svd-inline-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  padding: 3px 8px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff !important;
+  background-color: #007aff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  vertical-align: middle;
+  transition: all 0.15s ease-in-out;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  line-height: 1.2;
+}
+
+.svd-inline-btn:hover {
+  background-color: #0056b3 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.svd-inline-btn:active {
+  transform: translateY(0);
+}
+
+.svd-inline-btn.svd-loading {
+  background-color: #ff9500 !important;
+  cursor: wait !important;
+}
+
+.svd-inline-btn.svd-success {
+  background-color: #34c759 !important;
+}
+
+.svd-inline-btn.svd-error {
+  background-color: #ff3b30 !important;
+}
+
+/* Floating Banner on Video Player Pages */
+.svd-floating-bar {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(28, 28, 30, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  animation: svdFadeIn 0.3s ease-out;
+}
+
+@keyframes svdFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.svd-floating-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 280px;
+}
+
+.svd-floating-icon {
+  font-size: 18px;
+}
+
+.svd-floating-title {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #f2f2f7;
+}
+
+.svd-floating-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #007aff;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.svd-floating-btn:hover {
+  background: #0056b3;
+}
+
+/* YouTube Injected Action Button & Dropdown Menu */
+.svd-yt-btn-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  vertical-align: middle;
+  z-index: 1000;
+  font-family: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.svd-yt-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #0f0f0f;
+  border: none;
+  border-radius: 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  user-select: none;
+}
+
+/* Dark mode support matching YouTube's dark theme */
+html[dark] .svd-yt-btn,
+[dark] .svd-yt-btn,
+@media (prefers-color-scheme: dark) {
+  .svd-yt-btn {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #f1f1f1;
+  }
+}
+
+.svd-yt-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.svd-yt-btn.svd-yt-loading {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+.svd-caret {
+  margin-left: 2px;
+}
+
+/* YouTube Dropdown Menu */
+.svd-yt-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 99999;
+}
+
+html[dark] .svd-yt-menu,
+[dark] .svd-yt-menu,
+@media (prefers-color-scheme: dark) {
+  .svd-yt-menu {
+    background: #282828;
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.svd-yt-menu-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #888888;
+  padding: 6px 10px 4px 10px;
+}
+
+.svd-yt-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease;
+  width: 100%;
+}
+
+.svd-yt-menu-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+html[dark] .svd-yt-menu-item:hover,
+[dark] .svd-yt-menu-item:hover,
+@media (prefers-color-scheme: dark) {
+  .svd-yt-menu-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.svd-yt-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #007aff;
+  color: #ffffff;
+}
+
+.svd-yt-badge.hd {
+  background: #ff3b30;
+}
+
+.svd-yt-badge.audio {
+  background: #34c759;
+}
+
+.svd-yt-item-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.svd-yt-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f0f0f;
+}
+
+html[dark] .svd-yt-item-title,
+[dark] .svd-yt-item-title,
+@media (prefers-color-scheme: dark) {
+  .svd-yt-item-title {
+    color: #f1f1f1;
+  }
+}
+
+.svd-yt-item-sub {
+  font-size: 11px;
+  color: #888888;
+}
+
+/* In-Page Floating Streaming Download Toolbar */
+.svd-page-dl-toolbar {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483647;
+  width: 330px;
+  background: rgba(28, 28, 30, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  user-select: none;
+  animation: svdSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes svdSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.svd-toolbar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.svd-toolbar-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.svd-toolbar-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.svd-toolbar-title {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #f2f2f7;
+}
+
+.svd-toolbar-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.svd-status-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.svd-status-pill.downloading {
+  background: rgba(10, 132, 255, 0.25);
+  color: #0a84ff;
+  border: 1px solid rgba(10, 132, 255, 0.4);
+}
+
+.svd-status-pill.paused {
+  background: rgba(255, 159, 10, 0.25);
+  color: #ff9f0a;
+  border: 1px solid rgba(255, 159, 10, 0.4);
+}
+
+.svd-status-pill.completed {
+  background: rgba(48, 209, 88, 0.25);
+  color: #30d158;
+  border: 1px solid rgba(48, 209, 88, 0.4);
+}
+
+.svd-status-pill.error {
+  background: rgba(255, 69, 58, 0.25);
+  color: #ff453a;
+  border: 1px solid rgba(255, 69, 58, 0.4);
+}
+
+.svd-percent-txt {
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+
+.svd-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.svd-progress-fill {
+  height: 100%;
+  background: #0a84ff;
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+
+.svd-progress-fill.paused {
+  background: #ff9f0a;
+}
+
+.svd-progress-fill.completed {
+  background: #30d158;
+}
+
+.svd-progress-fill.error {
+  background: #ff453a;
+}
+
+.svd-toolbar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.svd-toolbar-metrics {
+  color: #8e8e93;
+  font-variant-numeric: tabular-nums;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.svd-toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.svd-ctrl-btn {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.15s ease;
+}
+
+.svd-ctrl-btn.pause-btn {
+  background: rgba(255, 159, 10, 0.2);
+  color: #ff9f0a;
+  border: 1px solid rgba(255, 159, 10, 0.4);
+}
+
+.svd-ctrl-btn.pause-btn:hover {
+  background: rgba(255, 159, 10, 0.35);
+}
+
+.svd-ctrl-btn.resume-btn {
+  background: rgba(10, 132, 255, 0.2);
+  color: #0a84ff;
+  border: 1px solid rgba(10, 132, 255, 0.4);
+}
+
+.svd-ctrl-btn.resume-btn:hover {
+  background: rgba(10, 132, 255, 0.35);
+}
+
+.svd-ctrl-btn.cancel-btn {
+  background: rgba(255, 69, 58, 0.2);
+  color: #ff453a;
+  border: 1px solid rgba(255, 69, 58, 0.4);
+}
+
+.svd-ctrl-btn.cancel-btn:hover {
+  background: rgba(255, 69, 58, 0.35);
+}
+
+.svd-ctrl-btn.dismiss-btn {
+  background: rgba(255, 255, 255, 0.15);
+  color: #f2f2f7;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.svd-ctrl-btn.dismiss-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+

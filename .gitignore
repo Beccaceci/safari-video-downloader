@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Temporary & build artifacts
+*.log
+*.tmp
+.build/
+build/
+node_modules/

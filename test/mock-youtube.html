@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en" dark="true">
+<head>
+  <meta charset="UTF-8">
+  <title>Big Buck Bunny 4K - YouTube (Mock)</title>
+  <style>
+    body {
+      background-color: #0f0f0f;
+      color: #f1f1f1;
+      font-family: "Roboto", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      height: 56px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      background-color: #0f0f0f;
+      border-bottom: 1px solid #272727;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .yt-icon {
+      background-color: #ff0000;
+      color: white;
+      border-radius: 6px;
+      padding: 2px 6px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .main-layout {
+      max-width: 1280px;
+      margin: 24px auto;
+      display: flex;
+      gap: 24px;
+      padding: 0 24px;
+    }
+    .primary-col {
+      flex: 1;
+    }
+    .secondary-col {
+      width: 360px;
+    }
+    .video-player {
+      width: 100%;
+      height: 480px;
+      background-color: #000;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #title h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin: 14px 0 8px 0;
+      line-height: 1.3;
+    }
+    .watch-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #272727;
+    }
+    .channel-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .channel-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #ff5722;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+    #channel-name {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .sub-count {
+      font-size: 12px;
+      color: #aaa;
+    }
+    .yt-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 36px;
+      padding: 0 14px;
+      background-color: #272727;
+      color: #f1f1f1;
+      border: none;
+      border-radius: 18px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .yt-btn.subscribe {
+      background-color: #f1f1f1;
+      color: #0f0f0f;
+      font-weight: 600;
+    }
+    #top-level-buttons-computed {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .rec-item {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+    .rec-item:hover {
+      background: #272727;
+    }
+    .rec-thumb {
+      width: 120px;
+      height: 68px;
+      background: #333;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #888;
+    }
+    .rec-info h4 {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+    .rec-info span {
+      font-size: 12px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <span class="yt-icon">▶</span>
+      <span>YouTube (Mock Test Environment)</span>
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <div class="primary-col">
+      <!-- Player -->
+      <div class="video-player" id="movie_player">
+        <video controls poster="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg">
+          <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+        </video>
+      </div>
+
+      <!-- Video Title -->
+      <div id="title">
+        <h1><yt-formatted-string id="video-title-text">Big Buck Bunny 4K - Open Source Animation</yt-formatted-string></h1>
+      </div>
+
+      <!-- Metadata & Actions -->
+      <div class="watch-meta">
+        <div class="channel-info">
+          <div class="channel-avatar">B</div>
+          <div>
+            <div id="owner">
+              <div id="channel-name"><yt-formatted-string>Blender Foundation</yt-formatted-string></div>
+            </div>
+            <div class="sub-count">1.45M subscribers</div>
+          </div>
+          <button class="yt-btn subscribe">Subscribe</button>
+        </div>
+
+        <div id="actions">
+          <div id="top-level-buttons-computed">
+            <button class="yt-btn">👍 142K</button>
+            <button class="yt-btn">👎</button>
+            <button class="yt-btn">Share</button>
+            <button class="yt-btn">Clip</button>
+            <!-- Extension injects Download button right here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recommendations (simulates SPA navigation) -->
+    <div class="secondary-col">
+      <h3 style="font-size: 15px; margin-bottom: 12px;">Recommended (Click to test SPA transitions)</h3>
+
+      <div class="rec-item" data-id="elephants-dream" data-title="Elephants Dream (Open Movie)" data-src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4">
+        <div class="rec-thumb">Thumb 1</div>
+        <div class="rec-info">
+          <h4>Elephants Dream (Open Movie)</h4>
+          <span>Blender &bull; 850K views</span>
+        </div>
+      </div>
+
+      <div class="rec-item" data-id="for-bigger-blazes" data-title="For Bigger Blazes (HD)" data-src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4">
+        <div class="rec-thumb">Thumb 2</div>
+        <div class="rec-info">
+          <h4>For Bigger Blazes (HD)</h4>
+          <span>Chromecast &bull; 1.2M views</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simulate YouTube SPA navigation
+    document.querySelectorAll(".rec-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const id = item.dataset.id;
+        const title = item.dataset.title;
+        const src = item.dataset.src;
+
+        document.getElementById("video-title-text").textContent = title;
+        document.title = title + " - YouTube";
+        
+        const video = document.querySelector("video");
+        video.src = src;
+        video.load();
+
+        history.pushState({}, "", "/watch?v=" + id);
+        window.dispatchEvent(new CustomEvent("yt-navigate-finish"));
+      });
+    });
+  </script>
+</body>
+</html>

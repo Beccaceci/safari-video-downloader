@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Safari Video Downloader - General Test Suite</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      line-height: 1.6;
+    }
+    h1 { color: #007aff; }
+    .test-box {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+      background: #fafafa;
+    }
+    video {
+      width: 100%;
+      max-width: 500px;
+      border-radius: 6px;
+      display: block;
+      margin-top: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      background: #007aff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    a {
+      color: #007aff;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    a:hover { text-decoration: underline; }
+    ul { list-style: none; padding-left: 0; }
+    li { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Safari Video Downloader &bull; Test Suite</h1>
+  <p>This page tests different video embedding techniques and hyperlink formats.</p>
+
+  <div class="test-box">
+    <h3>1. Direct Video Hyperlinks</h3>
+    <ul>
+      <li><a href="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" title="Big Buck Bunny 1080p">Download Big Buck Bunny (.mp4)</a></li>
+      <li><a href="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4" title="Elephants Dream">Download Elephants Dream (.mp4)</a></li>
+      <li><a href="https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8" title="Mux HLS Test Stream">HLS Master Stream (.m3u8)</a></li>
+    </ul>
+  </div>
+
+  <div class="test-box">
+    <h3>2. Embedded HTML5 Video Player</h3>
+    <video controls preload="metadata">
+      <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" type="video/mp4">
+    </video>
+  </div>
+
+  <div class="test-box">
+    <h3>3. Dynamically Injected Video</h3>
+    <p>Click the button below to dynamically insert a new video tag into the DOM via JavaScript:</p>
+    <button id="inject-btn">Inject Video</button>
+    <div id="dynamic-container" style="margin-top: 12px;"></div>
+  </div>
+
+  <script>
+    document.getElementById("inject-btn").addEventListener("click", () => {
+      const container = document.getElementById("dynamic-container");
+      const video = document.createElement("video");
+      video.src = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4";
+      video.controls = true;
+      video.title = "Dynamically Injected Video";
+      container.appendChild(video);
+    });
+  </script>
+</body>
+</html>

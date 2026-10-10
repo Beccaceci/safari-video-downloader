@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HLS Stream Downloader - Safari Video Downloader</title>
+  <link rel="stylesheet" href="hls-downloader.css">
+</head>
+<body>
+  <div class="hls-container">
+    <header class="hls-header">
+      <div class="header-content">
+        <div class="logo-area">
+          <span class="badge">HLS</span>
+          <h1>Stream Downloader & Merger</h1>
+        </div>
+        <p class="subtitle">Downloads stream segments client-side and merges them into a complete video.</p>
+      </div>
+    </header>
+
+    <main class="hls-main">
+      <div class="card info-card">
+        <div class="field">
+          <label for="video-title">Video Title:</label>
+          <input type="text" id="video-title" class="input-text" placeholder="Lecture title...">
+        </div>
+
+        <div class="field">
+          <label for="m3u8-url">Stream URL (.m3u8):</label>
+          <div class="input-group">
+            <input type="text" id="m3u8-url" class="input-text" placeholder="https://.../playlist.m3u8" readonly>
+            <button id="copy-url-btn" class="secondary-btn" title="Copy stream URL">Copy</button>
+          </div>
+        </div>
+
+        <div id="quality-field" class="field hidden">
+          <label for="quality-select">Select Quality / Resolution:</label>
+          <select id="quality-select" class="select-box">
+            <option value="">Detecting available streams...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Download Control & Progress Card -->
+      <div class="card progress-card">
+        <div class="status-header">
+          <div class="status-left">
+            <span id="status-badge" class="status-badge ready">Ready</span>
+            <span id="status-text" class="status-text">Ready to download segments</span>
+          </div>
+          <span id="percentage-text" class="percentage-text">0%</span>
+        </div>
+
+        <div class="progress-bar-wrapper">
+          <div id="progress-bar" class="progress-bar" style="width: 0%;"></div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-item">
+            <span class="stat-label">Segments</span>
+            <span id="stat-segments" class="stat-value">0 / 0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Size</span>
+            <span id="stat-size" class="stat-value">0 MB</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Speed</span>
+            <span id="stat-speed" class="stat-value">0 KB/s</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Time Remaining</span>
+            <span id="stat-eta" class="stat-value">--:--</span>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button id="start-btn" class="primary-btn">Start Download</button>
+          <button id="cancel-btn" class="danger-btn hidden">Cancel</button>
+          <button id="save-btn" class="success-btn hidden">Save Video (.mp4)</button>
+        </div>
+      </div>
+
+      <!-- Log / Output console -->
+      <div class="card log-card">
+        <div class="log-header">
+          <span>Activity Log</span>
+          <button id="clear-log-btn" class="text-btn">Clear</button>
+        </div>
+        <div id="log-output" class="log-output">
+          <div class="log-line info">Ready. Click 'Start Download' to begin segment acquisition.</div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="hls-footer">
+      <p>Safari Video Downloader &bull; Merged client-side &bull; No third-party server upload required</p>
+    </footer>
+  </div>
+
+  <script src="hls-downloader.js"></script>
+</body>
+</html>

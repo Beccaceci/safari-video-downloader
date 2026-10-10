@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Safari Video Downloader</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="header-left">
+        <img src="../icons/icon-32.png" alt="Icon" class="app-icon">
+        <div class="header-titles">
+          <h1>Safari Video Downloader</h1>
+          <span id="tab-host" class="tab-host">Scanning...</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="rescan-btn" class="icon-btn" title="Re-scan page for videos">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Batch Actions Bar -->
+    <div id="batch-bar" class="batch-bar hidden">
+      <div class="batch-left">
+        <span class="count-badge" id="media-count">0</span>
+        <span class="count-label">Videos found</span>
+      </div>
+      <div class="batch-buttons">
+        <button id="download-all-btn" class="batch-btn primary" title="Download all detected MP4s">Download All</button>
+        <button id="copy-all-btn" class="batch-btn secondary" title="Copy all URLs">Copy Links</button>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">🎬</div>
+      <h2>No Videos Detected Yet</h2>
+      <p>Play the video on the webpage or click below to search for embedded videos and hyperlinks.</p>
+      <button id="empty-scan-btn" class="primary-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        Scan Page for Media
+      </button>
+    </div>
+
+    <!-- Media List -->
+    <div id="media-list" class="media-list hidden">
+      <!-- Media items dynamically injected here -->
+    </div>
+
+    <!-- Footer Notice -->
+    <footer class="popup-footer">
+      <span>Supports MP4, HLS (.m3u8), WebM & Portale della Didattica</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

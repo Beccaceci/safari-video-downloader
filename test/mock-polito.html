@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Portale della Didattica - Politecnico di Torino (Mock)</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f7f7f7;
+      color: #333;
+    }
+    header {
+      background-color: #0c2340;
+      color: white;
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+    .user-info {
+      font-size: 13px;
+      color: #c0c8d0;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 24px auto;
+      padding: 24px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .course-title {
+      font-size: 22px;
+      color: #0c2340;
+      border-bottom: 2px solid #0c2340;
+      padding-bottom: 8px;
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin: 20px 0 10px 0;
+      color: #444;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    th {
+      background-color: #f0f4f8;
+      font-size: 13px;
+      color: #0c2340;
+    }
+    td a {
+      color: #0056b3;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    td a:hover {
+      text-decoration: underline;
+    }
+    .video-container {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+    }
+    video {
+      width: 100%;
+      max-width: 640px;
+      display: block;
+      margin: 10px 0;
+      border-radius: 6px;
+      background: #000;
+    }
+    .badge-lez {
+      display: inline-block;
+      padding: 2px 6px;
+      background: #e2e8f0;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      color: #475569;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Portale della Didattica &bull; Videolezioni</h1>
+    <div class="user-info">Studente: s123456 &bull; Anno Accademico 2026/2027</div>
+  </header>
+
+  <div class="container">
+    <h2 class="course-title">01QZP - Sistemi Operativi e Reti (Prof. Mock)</h2>
+    <p>Di seguito l'elenco delle videolezioni registrate per l'insegnamento.</p>
+
+    <div class="section-title">Elenco Lezioni Disponibili</div>
+
+    <table id="table-videolezioni">
+      <thead>
+        <tr>
+          <th style="width: 80px;">Lezione</th>
+          <th>Argomento e Descrizione</th>
+          <th style="width: 120px;">Data</th>
+          <th style="width: 140px;">Durata</th>
+          <th>Collegamento Video</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge-lez">01</span></td>
+          <td><strong>Introduzione al corso e architettura di un calcolatore</strong></td>
+          <td>02/10/2026</td>
+          <td>1h 35m</td>
+          <td>
+            <a href="https://video.polito.it/dl/01QZP_lez01_intro.mp4" class="policorpolink" title="Lezione 01 - Introduzione">
+              Video (MP4)
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td><span class="badge-lez">02</span></td>
+          <td><strong>Processi, Thread e Concorrenza</strong></td>
+          <td>04/10/2026</td>
+          <td>1h 42m</td>
+          <td>
+            <a href="https://didattica.polito.it/portal/pls/portal/sviluppo.videolezioni.vis?lez=2" class="policorpolink" title="Lezione 02 - Processi e Concorrenza">
+              Videolezione 02
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td><span class="badge-lez">03</span></td>
+          <td><strong>Sincronizzazione: Mutex, Semafori e Condvars</strong></td>
+          <td>07/10/2026</td>
+          <td>1h 30m</td>
+          <td>
+            <a href="https://video.polito.it/dl/01QZP_lez03_sincronizzazione.mp4" class="policorpolink" title="Lezione 03 - Sincronizzazione">
+              Video (MP4)
+            </a>
+          </td>
+        </tr>
+        <tr>
+          <td><span class="badge-lez">04</span></td>
+          <td><strong>Gestione della Memoria e Paginazione</strong></td>
+          <td>09/10/2026</td>
+          <td>1h 45m</td>
+          <td>
+            <a href="https://didattica.polito.it/portal/pls/portal/sviluppo.videolezioni.vis?lez=4" class="policorpolink" title="Lezione 04 - Gestione Memoria">
+              Videolezione 04
+            </a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="section-title">Elenco Videolezioni del Corso (Lista Portale)</div>
+    <ul class="lista-videolezioni" style="line-height: 2.2; font-size: 15px;">
+      <li>
+        <a href="#lez-28-09" class="lecture-link" data-src="https://video.polito.it/dl/01QZP_lez_20260928.mp4">
+          Lezione del 28/09/2026
+        </a> of 28/09/2026
+      </li>
+      <li>
+        <a href="#lez-30-09" class="lecture-link" data-src="https://video.polito.it/dl/01QZP_lez_20260930.mp4">
+          Lezione del 30/09/2026
+        </a> of 30/09/2026
+      </li>
+      <li>
+        <a href="#lez-02-10" class="lecture-link" data-src="https://video.polito.it/dl/01QZP_lez_20261002.mp4">
+          Lezione del 02/10/2026
+        </a> of 02/10/2026
+      </li>
+    </ul>
+
+    <div class="video-container">
+      <h3 id="current-lecture-heading">Player Integrato Videolezione Corrente</h3>
+      <p>Visualizzazione diretta con player HTML5 nativo:</p>
+      <video id="player" controls poster="">
+        <source src="https://video.polito.it/dl/01QZP_lez01_intro.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    </div>
+  </div>
+
+  <script>
+    // Simulate Portale della Didattica interactive playback switching
+    document.querySelectorAll(".lecture-link").forEach(link => {
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        const src = link.dataset.src;
+        const title = link.innerText.trim();
+        const player = document.getElementById("player");
+        const source = player.querySelector("source");
+        
+        document.getElementById("current-lecture-heading").textContent = title;
+        source.src = src;
+        player.load();
+        player.play().catch(() => {});
+      });
+    });
+  </script>
+</body>
+</html>
+
