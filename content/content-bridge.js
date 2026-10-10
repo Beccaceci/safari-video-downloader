@@ -45,6 +45,18 @@
       const rawText = link.innerText || link.textContent || "";
       const cleaned = cleanLectureLinkText(rawText);
       const href = link.getAttribute("href");
+      const dataSrc = link.dataset.src || link.dataset.url || link.getAttribute("data-video");
+
+      let candidateUrl = "";
+      if (dataSrc) {
+        try {
+          candidateUrl = new URL(dataSrc, location.href).href;
+        } catch (_) {}
+      } else if (href && !href.startsWith("javascript:") && !href.startsWith("#")) {
+        try {
+          candidateUrl = new URL(href, location.href).href;
+        } catch (_) {}
+      }
 
       if (cleaned) {
         window.__SVD_LAST_CLICKED_TITLE__ = cleaned;
@@ -52,11 +64,22 @@
           sessionStorage.setItem("__SVD_LAST_CLICKED_TITLE__", cleaned);
         } catch (_) {}
 
-        const fullUrl = href ? new URL(href, location.href).href : "";
         chrome.runtime.sendMessage({
           action: "SET_LAST_CLICKED_LINK",
           title: cleaned,
-          url: fullUrl
+          url: candidateUrl
+        });
+      }
+
+      // If the clicked link directly points to a video or lecture stream, immediately register it
+      if (candidateUrl && (VIDEO_EXT_REGEX.test(candidateUrl) || candidateUrl.includes("video.polito.it"))) {
+        chrome.runtime.sendMessage({
+          action: "ADD_MEDIA",
+          item: {
+            url: candidateUrl,
+            title: cleaned || extractTitle(link),
+            source: "clicked_link"
+          }
         });
       }
     },
@@ -259,19 +282,10 @@
     });
   }
 
-  // StreamDownloadManager: chunked streaming download with progress, pause/resume, and zero video player playback
-  class StreamDownloadManager {
+  // In-page floating download toolbar manager (driven by background progress events)
+  class PageToolbarManager {
     constructor() {
-      this.downloads = new Map(); // id -> downloadObj & url -> downloadObj
-    }
-
-    findDownload(idOrUrl) {
-      if (!idOrUrl) return null;
-      if (this.downloads.has(idOrUrl)) return this.downloads.get(idOrUrl);
-      for (const dl of this.downloads.values()) {
-        if (dl.url === idOrUrl || dl.id === idOrUrl) return dl;
-      }
-      return null;
+      this.downloads = new Map();
     }
 
     formatBytes(bytes) {
@@ -282,38 +296,9 @@
       return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
     }
 
-    formatSpeed(bytesPerSec) {
-      if (!bytesPerSec || bytesPerSec <= 0) return "";
-      return this.formatBytes(bytesPerSec) + "/s";
-    }
+    update(dl) {
+      this.downloads.set(dl.id || dl.url, dl);
 
-    notify(dl) {
-      const payload = {
-        id: dl.id,
-        url: dl.url,
-        filename: dl.filename,
-        percent: dl.percent,
-        receivedBytes: dl.receivedBytes,
-        totalBytes: dl.totalBytes,
-        speed: dl.speed,
-        status: dl.status,
-        error: dl.error
-      };
-
-      // 1. Notify background service worker (and open popup)
-      try {
-        chrome.runtime.sendMessage({
-          action: "DOWNLOAD_PROGRESS",
-          data: payload
-        });
-      } catch (_) {}
-
-      // 2. Update in-page floating progress toolbar
-      this.updatePageToolbar(dl);
-    }
-
-    // In-page sleek floating download toolbar
-    updatePageToolbar(dl) {
       let toolbar = document.getElementById("svd-page-dl-toolbar");
       if (!toolbar) {
         toolbar = document.createElement("div");
@@ -339,7 +324,7 @@
       }
 
       const receivedFormatted = this.formatBytes(dl.receivedBytes);
-      const totalFormatted = dl.totalBytes > 0 ? this.formatBytes(dl.totalBytes) : "Unknown size";
+      const totalFormatted = dl.totalBytes > 0 ? this.formatBytes(dl.totalBytes) : "calculating...";
       const percentStr = dl.totalBytes > 0 ? `${dl.percent}%` : "";
       const isPaused = dl.status === "paused";
       const isCompleted = dl.status === "completed";
@@ -402,17 +387,36 @@
       // Event listeners for page toolbar
       const pauseBtn = toolbar.querySelector("#svd-page-pause");
       if (pauseBtn) {
-        pauseBtn.addEventListener("click", () => this.pause(dl.id));
+        pauseBtn.addEventListener("click", () => {
+          chrome.runtime.sendMessage({
+            action: "PAUSE_DOWNLOAD",
+            downloadId: dl.id,
+            url: dl.url
+          });
+        });
       }
 
       const resumeBtn = toolbar.querySelector("#svd-page-resume");
       if (resumeBtn) {
-        resumeBtn.addEventListener("click", () => this.resume(dl.id));
+        resumeBtn.addEventListener("click", () => {
+          chrome.runtime.sendMessage({
+            action: "RESUME_DOWNLOAD",
+            downloadId: dl.id,
+            url: dl.url
+          });
+        });
       }
 
       const cancelBtn = toolbar.querySelector("#svd-page-cancel");
       if (cancelBtn) {
-        cancelBtn.addEventListener("click", () => this.cancel(dl.id));
+        cancelBtn.addEventListener("click", () => {
+          chrome.runtime.sendMessage({
+            action: "CANCEL_DOWNLOAD",
+            downloadId: dl.id,
+            url: dl.url
+          });
+          toolbar.remove();
+        });
       }
 
       const dismissBtn = toolbar.querySelector("#svd-page-dismiss");
@@ -420,211 +424,9 @@
         dismissBtn.addEventListener("click", () => toolbar.remove());
       }
     }
-
-    async start(url, filename, customId) {
-      let dl = this.findDownload(url);
-      if (dl) {
-        if (dl.status === "paused") {
-          return this.resume(dl.id);
-        }
-        if (dl.status === "downloading") {
-          return dl;
-        }
-      }
-
-      const id = customId || `dl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-      dl = {
-        id,
-        url,
-        filename: filename || "video.mp4",
-        status: "downloading",
-        receivedBytes: 0,
-        totalBytes: 0,
-        percent: 0,
-        speed: "Connecting...",
-        chunks: [],
-        abortController: new AbortController(),
-        lastReportTime: Date.now(),
-        lastReportBytes: 0,
-        error: null
-      };
-
-      this.downloads.set(id, dl);
-      this.downloads.set(url, dl);
-      this.executeStream(dl);
-      return dl;
-    }
-
-    async executeStream(dl) {
-      dl.status = "downloading";
-      dl.error = null;
-      dl.abortController = new AbortController();
-      this.notify(dl);
-
-      try {
-        const headers = {};
-        if (dl.receivedBytes > 0) {
-          headers["Range"] = `bytes=${dl.receivedBytes}-`;
-        }
-
-        const response = await fetch(dl.url, {
-          headers,
-          credentials: "include",
-          signal: dl.abortController.signal
-        });
-
-        if (!response.ok && response.status !== 206) {
-          throw new Error(`Server returned HTTP ${response.status} ${response.statusText}`);
-        }
-
-        // If resuming but server sent HTTP 200 (Range not supported), reset to byte 0
-        if (dl.receivedBytes > 0 && response.status === 200) {
-          console.warn("[SVD] Server does not support Range requests. Restarting download from byte 0.");
-          dl.chunks = [];
-          dl.receivedBytes = 0;
-        }
-
-        // Determine total size
-        const contentRange = response.headers.get("content-range");
-        const contentLength = response.headers.get("content-length");
-        if (contentRange) {
-          const match = contentRange.match(/\/(\d+)/);
-          if (match) {
-            dl.totalBytes = parseInt(match[1], 10);
-          }
-        } else if (contentLength) {
-          dl.totalBytes = dl.receivedBytes + parseInt(contentLength, 10);
-        }
-
-        const reader = response.body.getReader();
-        dl.lastReportTime = Date.now();
-        dl.lastReportBytes = dl.receivedBytes;
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          dl.chunks.push(value);
-          dl.receivedBytes += value.length;
-
-          if (dl.totalBytes > 0) {
-            dl.percent = Math.min(99, Math.round((dl.receivedBytes / dl.totalBytes) * 100));
-          } else {
-            dl.percent = 0;
-          }
-
-          const now = Date.now();
-          const timeDiff = now - dl.lastReportTime;
-          if (timeDiff >= 200) {
-            const bytesDiff = dl.receivedBytes - dl.lastReportBytes;
-            const bytesPerSec = (bytesDiff / timeDiff) * 1000;
-            dl.speed = this.formatSpeed(bytesPerSec);
-            dl.lastReportTime = now;
-            dl.lastReportBytes = dl.receivedBytes;
-            this.notify(dl);
-          }
-        }
-
-        // Completed
-        dl.percent = 100;
-        dl.status = "completed";
-        dl.speed = "";
-        this.notify(dl);
-
-        // Convert chunks to Blob and trigger direct browser save without navigating or playing video!
-        const mime = response.headers.get("content-type") || "video/mp4";
-        const blob = new Blob(dl.chunks, { type: mime });
-        const blobUrl = URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = dl.filename;
-        a.style.display = "none";
-        (document.body || document.documentElement).appendChild(a);
-        a.click();
-
-        setTimeout(() => {
-          a.remove();
-          URL.revokeObjectURL(blobUrl);
-          // Free chunks from memory once saved to disk
-          dl.chunks = [];
-        }, 30000);
-
-      } catch (err) {
-        if (err.name === "AbortError" || dl.status === "paused" || dl.status === "cancelled") {
-          return;
-        }
-
-        console.error("[SVD] Download stream error:", err);
-        dl.status = "error";
-        dl.error = err.message || "Download failed";
-        dl.speed = "";
-        this.notify(dl);
-      }
-    }
-
-    pause(idOrUrl) {
-      const dl = this.findDownload(idOrUrl);
-      if (dl && dl.status === "downloading") {
-        dl.status = "paused";
-        dl.speed = "Paused";
-        if (dl.abortController) {
-          dl.abortController.abort();
-        }
-        this.notify(dl);
-      }
-    }
-
-    resume(idOrUrl) {
-      const dl = this.findDownload(idOrUrl);
-      if (dl && (dl.status === "paused" || dl.status === "error")) {
-        dl.status = "downloading";
-        dl.speed = "Resuming...";
-        dl.error = null;
-        this.executeStream(dl);
-      }
-    }
-
-    cancel(idOrUrl) {
-      const dl = this.findDownload(idOrUrl);
-      if (dl) {
-        dl.status = "cancelled";
-        dl.speed = "";
-        if (dl.abortController) {
-          dl.abortController.abort();
-        }
-        dl.chunks = [];
-        dl.receivedBytes = 0;
-        this.notify(dl);
-        this.downloads.delete(dl.id);
-        this.downloads.delete(dl.url);
-      }
-    }
-
-    getAllStates() {
-      const states = [];
-      const seen = new Set();
-      for (const dl of this.downloads.values()) {
-        if (!seen.has(dl.id)) {
-          seen.add(dl.id);
-          states.push({
-            id: dl.id,
-            url: dl.url,
-            filename: dl.filename,
-            percent: dl.percent,
-            receivedBytes: dl.receivedBytes,
-            totalBytes: dl.totalBytes,
-            speed: dl.speed,
-            status: dl.status,
-            error: dl.error
-          });
-        }
-      }
-      return states;
-    }
   }
 
-  const downloadManager = new StreamDownloadManager();
+  const pageToolbar = new PageToolbarManager();
 
   // Message listener from background/popup
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -634,38 +436,43 @@
       return true;
     }
 
-    if (message.action === "START_DOWNLOAD" || message.action === "TRIGGER_DOWNLOAD") {
-      downloadManager.start(message.url, message.filename, message.downloadId);
+    if (message.action === "DOWNLOAD_PROGRESS" && message.data) {
+      pageToolbar.update(message.data);
       sendResponse({ success: true });
       return true;
     }
 
-    if (message.action === "PAUSE_DOWNLOAD") {
-      downloadManager.pause(message.downloadId || message.url);
+    if (message.action === "TRIGGER_BLOB_SAVE" && message.blobUrl) {
+      const a = document.createElement("a");
+      a.href = message.blobUrl;
+      a.download = message.filename || "video.mp4";
+      a.style.display = "none";
+      (document.body || document.documentElement).appendChild(a);
+      a.click();
+      setTimeout(() => a.remove(), 2000);
       sendResponse({ success: true });
       return true;
     }
 
-    if (message.action === "RESUME_DOWNLOAD") {
-      downloadManager.resume(message.downloadId || message.url);
+    if (message.action === "TRIGGER_FILE_SAVE" && message.url) {
+      const a = document.createElement("a");
+      a.href = message.url;
+      a.download = message.filename || "video.mp4";
+      a.style.display = "none";
+      (document.body || document.documentElement).appendChild(a);
+      a.click();
+      setTimeout(() => a.remove(), 2000);
       sendResponse({ success: true });
-      return true;
-    }
-
-    if (message.action === "CANCEL_DOWNLOAD") {
-      downloadManager.cancel(message.downloadId || message.url);
-      sendResponse({ success: true });
-      return true;
-    }
-
-    if (message.action === "GET_PAGE_DOWNLOADS") {
-      sendResponse({ success: true, downloads: downloadManager.getAllStates() });
       return true;
     }
   });
 
   // Export helper for specialized adapters
   window.__SAFARI_VID_DOWNLOAD_IN_PAGE__ = (url, filename) => {
-    return downloadManager.start(url, filename);
+    return chrome.runtime.sendMessage({
+      action: "START_DOWNLOAD",
+      url: url,
+      filename: filename
+    });
   };
 })();

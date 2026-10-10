@@ -214,19 +214,29 @@
 
           const filename = `${sanitizeName(lectureTitle)}.${targetVideoUrl.includes(".m3u8") ? "mp4" : "mp4"}`;
 
+          // Immediately register with background extension list
+          chrome.runtime.sendMessage({
+            action: "ADD_MEDIA",
+            item: {
+              url: targetVideoUrl,
+              title: lectureTitle,
+              ext: targetVideoUrl.includes(".m3u8") ? "m3u8" : "mp4",
+              source: "polito"
+            }
+          });
+
           if (targetVideoUrl.includes(".m3u8")) {
             chrome.runtime.sendMessage({
               action: "OPEN_HLS_DOWNLOADER",
               url: targetVideoUrl,
               title: lectureTitle
             });
-          } else if (window.__SAFARI_VID_DOWNLOAD_IN_PAGE__) {
-            window.__SAFARI_VID_DOWNLOAD_IN_PAGE__(targetVideoUrl, filename);
           } else {
-            const a = document.createElement("a");
-            a.href = targetVideoUrl;
-            a.download = filename;
-            a.click();
+            chrome.runtime.sendMessage({
+              action: "START_DOWNLOAD",
+              url: targetVideoUrl,
+              filename: filename
+            });
           }
 
           setTimeout(() => {
@@ -314,8 +324,12 @@
             url: src,
             title: title
           });
-        } else if (window.__SAFARI_VID_DOWNLOAD_IN_PAGE__) {
-          window.__SAFARI_VID_DOWNLOAD_IN_PAGE__(src, `${sanitizeName(title)}.mp4`);
+        } else {
+          chrome.runtime.sendMessage({
+            action: "START_DOWNLOAD",
+            url: src,
+            filename: `${sanitizeName(title)}.mp4`
+          });
         }
       }
     });

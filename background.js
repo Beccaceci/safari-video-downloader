@@ -3,11 +3,6 @@
 // Map of tabId -> Map<url, MediaItem>
 const mediaByTab = new Map();
 
-// Active streaming downloads registry: downloadId/url -> DownloadState
-const activeDownloads = new Map();
-// Map downloadId -> tabId to reliably route pause/resume/cancel commands
-const downloadTabMap = new Map();
-
 // Helper to get or create media map for a tab
 function getTabMediaMap(tabId) {
   if (!mediaByTab.has(tabId)) {
@@ -117,6 +112,320 @@ function addMediaItem(tabId, item) {
   return merged;
 }
 
+function sanitizeFilename(name) {
+  return (name || "video").replace(/[<>:"/\\|?*\x00-\x1F]/g, "_").trim().slice(0, 150);
+}
+
+// =========================================================================
+// Background StreamDownloadManager
+// Executes fetch() in the Service Worker with <all_urls> permissions
+// Completely immune to page CORS or cross-origin restrictions!
+// =========================================================================
+class BackgroundStreamDownloadManager {
+  constructor() {
+    this.downloads = new Map(); // id -> downloadObj & url -> downloadObj
+  }
+
+  findDownload(idOrUrl) {
+    if (!idOrUrl) return null;
+    if (this.downloads.has(idOrUrl)) return this.downloads.get(idOrUrl);
+    for (const dl of this.downloads.values()) {
+      if (dl.url === idOrUrl || dl.id === idOrUrl) return dl;
+    }
+    return null;
+  }
+
+  formatBytes(bytes) {
+    if (!bytes || bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  }
+
+  formatSpeed(bytesPerSec) {
+    if (!bytesPerSec || bytesPerSec <= 0) return "";
+    return this.formatBytes(bytesPerSec) + "/s";
+  }
+
+  notify(dl) {
+    const payload = {
+      id: dl.id,
+      url: dl.url,
+      filename: dl.filename,
+      percent: dl.percent,
+      receivedBytes: dl.receivedBytes,
+      totalBytes: dl.totalBytes,
+      speed: dl.speed,
+      status: dl.status,
+      error: dl.error
+    };
+
+    // Broadcast progress to popup or any active extension page
+    chrome.runtime.sendMessage({
+      action: "DOWNLOAD_PROGRESS",
+      data: payload
+    }).catch(() => {});
+
+    // Broadcast to the target tab so the in-page toolbar stays updated
+    if (dl.tabId) {
+      chrome.tabs.sendMessage(dl.tabId, {
+        action: "DOWNLOAD_PROGRESS",
+        data: payload
+      }).catch(() => {});
+    }
+  }
+
+  async start(url, filename, tabId, customId) {
+    let dl = this.findDownload(url);
+    if (dl) {
+      if (dl.status === "paused") {
+        return this.resume(dl.id);
+      }
+      if (dl.status === "downloading") {
+        return dl;
+      }
+    }
+
+    const id = customId || `dl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    dl = {
+      id,
+      url,
+      tabId: tabId || null,
+      filename: filename || "video.mp4",
+      status: "downloading",
+      receivedBytes: 0,
+      totalBytes: 0,
+      percent: 0,
+      speed: "Connecting...",
+      chunks: [],
+      abortController: new AbortController(),
+      lastReportTime: Date.now(),
+      lastReportBytes: 0,
+      error: null
+    };
+
+    this.downloads.set(id, dl);
+    this.downloads.set(url, dl);
+    this.executeStream(dl);
+    return dl;
+  }
+
+  async executeStream(dl) {
+    dl.status = "downloading";
+    dl.error = null;
+    dl.abortController = new AbortController();
+    this.notify(dl);
+
+    try {
+      const headers = {};
+      if (dl.receivedBytes > 0) {
+        headers["Range"] = `bytes=${dl.receivedBytes}-`;
+      }
+
+      // Privileged fetch inside background service worker (no CORS block)
+      const response = await fetch(dl.url, {
+        headers,
+        credentials: "include",
+        signal: dl.abortController.signal
+      });
+
+      if (!response.ok && response.status !== 206) {
+        throw new Error(`Server returned HTTP ${response.status} ${response.statusText}`);
+      }
+
+      // If resuming but server sent HTTP 200 (Range not supported), reset chunks
+      if (dl.receivedBytes > 0 && response.status === 200) {
+        console.warn("[SVD Background] Server does not support Range requests. Restarting download from byte 0.");
+        dl.chunks = [];
+        dl.receivedBytes = 0;
+      }
+
+      // Determine total size
+      const contentRange = response.headers.get("content-range");
+      const contentLength = response.headers.get("content-length");
+      if (contentRange) {
+        const match = contentRange.match(/\/(\d+)/);
+        if (match) {
+          dl.totalBytes = parseInt(match[1], 10);
+        }
+      } else if (contentLength) {
+        dl.totalBytes = dl.receivedBytes + parseInt(contentLength, 10);
+      }
+
+      const reader = response.body.getReader();
+      dl.lastReportTime = Date.now();
+      dl.lastReportBytes = dl.receivedBytes;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        dl.chunks.push(value);
+        dl.receivedBytes += value.length;
+
+        if (dl.totalBytes > 0) {
+          dl.percent = Math.min(99, Math.round((dl.receivedBytes / dl.totalBytes) * 100));
+        } else {
+          dl.percent = 0;
+        }
+
+        const now = Date.now();
+        const timeDiff = now - dl.lastReportTime;
+        if (timeDiff >= 200) {
+          const bytesDiff = dl.receivedBytes - dl.lastReportBytes;
+          const bytesPerSec = (bytesDiff / timeDiff) * 1000;
+          dl.speed = this.formatSpeed(bytesPerSec);
+          dl.lastReportTime = now;
+          dl.lastReportBytes = dl.receivedBytes;
+          this.notify(dl);
+        }
+      }
+
+      // Assembling completed payload
+      dl.percent = 100;
+      dl.status = "completed";
+      dl.speed = "";
+      this.notify(dl);
+
+      // Trigger file save directly
+      await this.deliverCompletedFile(dl, response.headers.get("content-type") || "video/mp4");
+
+    } catch (err) {
+      if (err.name === "AbortError" || dl.status === "paused" || dl.status === "cancelled") {
+        return;
+      }
+
+      console.error("[SVD Background] Download stream error:", err);
+      dl.status = "error";
+      dl.error = err.message || "Download failed";
+      dl.speed = "";
+      this.notify(dl);
+    }
+  }
+
+  async deliverCompletedFile(dl, mime) {
+    try {
+      // 1. Try chrome.downloads.download using direct URL if it's accessible without auth
+      // OR build Blob and use chrome.downloads.download({ url: blobUrl })
+      if (typeof Blob !== "undefined" && typeof URL !== "undefined" && URL.createObjectURL) {
+        const blob = new Blob(dl.chunks, { type: mime });
+        const blobUrl = URL.createObjectURL(blob);
+
+        if (chrome.downloads && chrome.downloads.download) {
+          chrome.downloads.download(
+            {
+              url: blobUrl,
+              filename: dl.filename,
+              saveAs: false
+            },
+            (downloadId) => {
+              if (chrome.runtime.lastError) {
+                console.warn("[SVD Background] chrome.downloads fallback:", chrome.runtime.lastError.message);
+                this.fallbackTabSave(dl, blobUrl);
+              } else {
+                setTimeout(() => {
+                  URL.revokeObjectURL(blobUrl);
+                  dl.chunks = [];
+                }, 60000);
+              }
+            }
+          );
+          return;
+        }
+      }
+
+      // 2. Direct tab trigger fallback
+      if (dl.tabId) {
+        chrome.tabs.sendMessage(dl.tabId, {
+          action: "TRIGGER_FILE_SAVE",
+          filename: dl.filename,
+          url: dl.url
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.error("[SVD Background] Error delivering completed file:", e);
+    }
+  }
+
+  fallbackTabSave(dl, blobUrl) {
+    if (dl.tabId) {
+      chrome.tabs.sendMessage(dl.tabId, {
+        action: "TRIGGER_BLOB_SAVE",
+        blobUrl: blobUrl,
+        filename: dl.filename
+      }, () => {
+        setTimeout(() => {
+          try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+          dl.chunks = [];
+        }, 60000);
+      });
+    }
+  }
+
+  pause(idOrUrl) {
+    const dl = this.findDownload(idOrUrl);
+    if (dl && dl.status === "downloading") {
+      dl.status = "paused";
+      dl.speed = "Paused";
+      if (dl.abortController) {
+        dl.abortController.abort();
+      }
+      this.notify(dl);
+    }
+  }
+
+  resume(idOrUrl) {
+    const dl = this.findDownload(idOrUrl);
+    if (dl && (dl.status === "paused" || dl.status === "error")) {
+      dl.status = "downloading";
+      dl.speed = "Resuming...";
+      dl.error = null;
+      this.executeStream(dl);
+    }
+  }
+
+  cancel(idOrUrl) {
+    const dl = this.findDownload(idOrUrl);
+    if (dl) {
+      dl.status = "cancelled";
+      dl.speed = "";
+      if (dl.abortController) {
+        dl.abortController.abort();
+      }
+      dl.chunks = [];
+      dl.receivedBytes = 0;
+      this.notify(dl);
+      this.downloads.delete(dl.id);
+      this.downloads.delete(dl.url);
+    }
+  }
+
+  getAllStates() {
+    const states = [];
+    const seen = new Set();
+    for (const dl of this.downloads.values()) {
+      if (!seen.has(dl.id)) {
+        seen.add(dl.id);
+        states.push({
+          id: dl.id,
+          url: dl.url,
+          filename: dl.filename,
+          percent: dl.percent,
+          receivedBytes: dl.receivedBytes,
+          totalBytes: dl.totalBytes,
+          speed: dl.speed,
+          status: dl.status,
+          error: dl.error
+        });
+      }
+    }
+    return states;
+  }
+}
+
+const backgroundDownloader = new BackgroundStreamDownloadManager();
+
 // Context Menu Setup
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
@@ -148,11 +457,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (ext === "m3u8") {
       openHlsDownloader(media.url, media.title);
     } else {
-      chrome.tabs.sendMessage(tab.id, {
-        action: "START_DOWNLOAD",
-        url: media.url,
-        filename: `${sanitizeFilename(media.title)}.${ext}`
-      });
+      backgroundDownloader.start(
+        media.url,
+        `${sanitizeFilename(media.title)}.${ext}`,
+        tab.id
+      );
     }
   } else if (info.menuItemId === "svd-download-video" && info.srcUrl) {
     const ext = detectExtension(info.srcUrl);
@@ -166,11 +475,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (ext === "m3u8") {
       openHlsDownloader(media.url, media.title);
     } else {
-      chrome.tabs.sendMessage(tab.id, {
-        action: "START_DOWNLOAD",
-        url: media.url,
-        filename: `${sanitizeFilename(media.title)}.${ext}`
-      });
+      backgroundDownloader.start(
+        media.url,
+        `${sanitizeFilename(media.title)}.${ext}`,
+        tab.id
+      );
     }
   }
 });
@@ -181,10 +490,6 @@ function openHlsDownloader(m3u8Url, title = "Video") {
     `downloader/hls-downloader.html?url=${encodeURIComponent(m3u8Url)}&title=${encodeURIComponent(title)}`
   );
   chrome.tabs.create({ url });
-}
-
-function sanitizeFilename(name) {
-  return (name || "video").replace(/[<>:"/\\|?*\x00-\x1F]/g, "_").trim().slice(0, 150);
 }
 
 // YouTube Download Handler
@@ -200,11 +505,7 @@ async function handleYouTubeDownload(tabId, videoId, quality = "1080", title = "
   const existing = map && (map.get(videoUrl) || Array.from(map.values()).find((m) => m.videoId === videoId));
 
   if (!isAudio && quality === "720" && existing && existing.directUrl720) {
-    chrome.tabs.sendMessage(tabId, {
-      action: "START_DOWNLOAD",
-      url: existing.directUrl720,
-      filename: filename
-    });
+    backgroundDownloader.start(existing.directUrl720, filename, tabId);
     return;
   }
 
@@ -244,11 +545,7 @@ async function handleYouTubeDownload(tabId, videoId, quality = "1080", title = "
   }
 
   if (resolvedUrl) {
-    chrome.tabs.sendMessage(tabId, {
-      action: "START_DOWNLOAD",
-      url: resolvedUrl,
-      filename: filename
-    });
+    backgroundDownloader.start(resolvedUrl, filename, tabId);
   } else {
     // If API endpoint is unreachable, open direct clean helper download tab
     const helperUrl = `https://cobalt.tools/#${encodeURIComponent(videoUrl)}`;
@@ -382,106 +679,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
     }
 
-    case "DOWNLOAD_PROGRESS": {
-      if (message.data) {
-        const d = message.data;
-        activeDownloads.set(d.id, d);
-        activeDownloads.set(d.url, d);
-        if (tabId) {
-          downloadTabMap.set(d.id, tabId);
-          downloadTabMap.set(d.url, tabId);
-        }
-        if (d.status === "completed") {
-          setTimeout(() => {
-            activeDownloads.delete(d.id);
-            activeDownloads.delete(d.url);
-          }, 30000);
-        } else if (d.status === "cancelled") {
-          activeDownloads.delete(d.id);
-          activeDownloads.delete(d.url);
-        }
-      }
-      sendResponse({ success: true });
-      return true;
-    }
-
     case "GET_DOWNLOAD_STATES": {
-      const states = [];
-      const seen = new Set();
-      for (const dl of activeDownloads.values()) {
-        if (!seen.has(dl.id)) {
-          seen.add(dl.id);
-          states.push(dl);
-        }
-      }
-      sendResponse({ success: true, downloads: states });
+      sendResponse({ success: true, downloads: backgroundDownloader.getAllStates() });
       return true;
     }
 
     case "START_DOWNLOAD": {
-      const targetTabId = message.tabId || tabId;
-      if (targetTabId) {
-        downloadTabMap.set(message.url, targetTabId);
-        chrome.tabs.sendMessage(targetTabId, {
-          action: "START_DOWNLOAD",
-          url: message.url,
-          filename: message.filename,
-          downloadId: message.downloadId
-        }, (res) => {
-          sendResponse(res || { success: true });
-        });
-        return true;
-      }
-      sendResponse({ success: false, error: "No target tab found" });
+      backgroundDownloader.start(
+        message.url,
+        message.filename,
+        tabId,
+        message.downloadId
+      );
+      sendResponse({ success: true });
       return true;
     }
 
     case "PAUSE_DOWNLOAD": {
-      const targetTabId = message.tabId || downloadTabMap.get(message.downloadId) || downloadTabMap.get(message.url) || tabId;
-      if (targetTabId) {
-        chrome.tabs.sendMessage(targetTabId, {
-          action: "PAUSE_DOWNLOAD",
-          downloadId: message.downloadId,
-          url: message.url
-        }, (res) => {
-          sendResponse(res || { success: true });
-        });
-        return true;
-      }
-      sendResponse({ success: false });
+      backgroundDownloader.pause(message.downloadId || message.url);
+      sendResponse({ success: true });
       return true;
     }
 
     case "RESUME_DOWNLOAD": {
-      const targetTabId = message.tabId || downloadTabMap.get(message.downloadId) || downloadTabMap.get(message.url) || tabId;
-      if (targetTabId) {
-        chrome.tabs.sendMessage(targetTabId, {
-          action: "RESUME_DOWNLOAD",
-          downloadId: message.downloadId,
-          url: message.url
-        }, (res) => {
-          sendResponse(res || { success: true });
-        });
-        return true;
-      }
-      sendResponse({ success: false });
+      backgroundDownloader.resume(message.downloadId || message.url);
+      sendResponse({ success: true });
       return true;
     }
 
     case "CANCEL_DOWNLOAD": {
-      const targetTabId = message.tabId || downloadTabMap.get(message.downloadId) || downloadTabMap.get(message.url) || tabId;
-      if (message.downloadId) activeDownloads.delete(message.downloadId);
-      if (message.url) activeDownloads.delete(message.url);
-      if (targetTabId) {
-        chrome.tabs.sendMessage(targetTabId, {
-          action: "CANCEL_DOWNLOAD",
-          downloadId: message.downloadId,
-          url: message.url
-        }, (res) => {
-          sendResponse(res || { success: true });
-        });
-        return true;
-      }
+      backgroundDownloader.cancel(message.downloadId || message.url);
       sendResponse({ success: true });
       return true;
     }
