@@ -418,6 +418,7 @@ class BackgroundStreamDownloadManager {
           totalBytes: dl.totalBytes,
           speed: dl.speed,
           status: dl.status,
+          blobUrl: dl.blobUrl || null,
           error: dl.error
         });
       }
@@ -712,6 +713,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case "CANCEL_DOWNLOAD": {
       backgroundDownloader.cancel(message.downloadId || message.url);
       sendResponse({ success: true });
+      return true;
+    }
+
+    case "GET_BLOB_URL": {
+      const dl = backgroundDownloader.findDownload(message.downloadId || message.url);
+      sendResponse({
+        success: !!(dl && dl.blobUrl),
+        blobUrl: dl ? dl.blobUrl : null,
+        filename: dl ? dl.filename : null
+      });
       return true;
     }
 

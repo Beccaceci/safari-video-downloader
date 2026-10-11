@@ -193,31 +193,37 @@ document.addEventListener("DOMContentLoaded", async () => {
         saveBtn.className = "card-tool-btn save";
         saveBtn.innerHTML = `<span>💾 Save Video</span>`;
         saveBtn.title = "Save video directly to your Downloads folder";
-        saveBtn.onclick = () => {
-          if (dl.blobUrl) {
+        saveBtn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const triggerSave = (targetBlobUrl, targetFilename) => {
             const a = document.createElement("a");
-            a.href = dl.blobUrl;
-            a.download = dl.filename || "video.mp4";
+            a.href = targetBlobUrl;
+            a.download = targetFilename || "video.mp4";
             document.body.appendChild(a);
             a.click();
             setTimeout(() => a.remove(), 2000);
             saveBtn.innerHTML = `<span>✓ Saved!</span>`;
+          };
+
+          if (dl.blobUrl) {
+            triggerSave(dl.blobUrl, dl.filename);
           } else {
-            // Trigger direct save via tab or fallback URL
-            chrome.tabs.sendMessage(activeTab.id, {
-              action: "TRIGGER_FILE_SAVE",
-              filename: dl.filename || "video.mp4",
-              url: dl.url
-            }).catch(() => {
-              const a = document.createElement("a");
-              a.href = dl.url;
-              a.download = dl.filename || "video.mp4";
-              a.target = "_blank";
-              document.body.appendChild(a);
-              a.click();
-              setTimeout(() => a.remove(), 2000);
+            // Request fresh blobUrl from background without starting a new download!
+            chrome.runtime.sendMessage({ action: "GET_BLOB_URL", url: url }, (res) => {
+              if (res && res.blobUrl) {
+                dl.blobUrl = res.blobUrl;
+                triggerSave(res.blobUrl, res.filename || dl.filename);
+              } else if (activeTab && activeTab.id) {
+                chrome.tabs.sendMessage(activeTab.id, {
+                  action: "TRIGGER_FILE_SAVE",
+                  filename: dl.filename || "video.mp4",
+                  url: dl.url
+                });
+                saveBtn.innerHTML = `<span>✓ Saved!</span>`;
+              }
             });
-            saveBtn.innerHTML = `<span>✓ Saved!</span>`;
           }
         };
         controlsEl.appendChild(saveBtn);
@@ -225,7 +231,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const dismissBtn = document.createElement("button");
         dismissBtn.className = "card-tool-btn dismiss";
         dismissBtn.textContent = "Dismiss";
-        dismissBtn.onclick = () => {
+        dismissBtn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
           downloadStates.delete(url);
           updateCardToolbar(url);
         };
