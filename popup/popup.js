@@ -40,13 +40,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   }
 
-  // Sanitize filename
+  // Sanitize filename preserving readable dates (e.g. 09/10/2026 -> 09-10-2026)
   function sanitizeName(name) {
-    return (name || "video")
-      .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
+    if (!name) return "video";
+    return name
+      .replace(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/g, "$1-$2-$3") // Clean date slashes to dashes
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, " ")
       .replace(/\s+/g, " ")
       .trim()
-      .slice(0, 100);
+      .slice(0, 120);
   }
 
   // 2. Fetch active downloads and detected media items
@@ -130,65 +132,71 @@ document.addEventListener("DOMContentLoaded", async () => {
     const totalFormatted = dl.totalBytes > 0 ? formatBytes(dl.totalBytes) : "calculating...";
     const percentStr = dl.totalBytes > 0 ? `${dl.percent}%` : "";
 
-    toolbarContainer.innerHTML = `
-      <div class="card-dl-toolbar">
+    let toolbar = toolbarContainer.querySelector(".card-dl-toolbar");
+    if (!toolbar) {
+      toolbar = document.createElement("div");
+      toolbar.className = "card-dl-toolbar";
+      toolbar.innerHTML = `
         <div class="card-dl-top">
-          <span class="card-dl-status ${statusClass}">${statusBadge}</span>
-          <span class="card-dl-percent">${percentStr}</span>
+          <span class="card-dl-status"></span>
+          <span class="card-dl-percent"></span>
         </div>
         <div class="card-dl-track">
-          <div class="card-dl-fill ${statusClass}" style="width: ${dl.percent}%"></div>
+          <div class="card-dl-fill"></div>
         </div>
         <div class="card-dl-bottom">
-          <span class="card-dl-metrics">
-            ${receivedFormatted} / ${totalFormatted} ${dl.speed ? `&bull; ${dl.speed}` : ""}
-          </span>
-          <div class="card-dl-controls">
-            ${
-              !isCompleted && !isError
-                ? isPaused
-                  ? `<button class="card-tool-btn resume" data-url="${url}" title="Resume download">▶ Resume</button>`
-                  : `<button class="card-tool-btn pause" data-url="${url}" title="Pause download">⏸ Pause</button>`
-                : ""
-            }
-            ${
-              !isCompleted
-                ? `<button class="card-tool-btn cancel" data-url="${url}" title="Cancel download">✕ Cancel</button>`
-                : `<button class="card-tool-btn dismiss" data-url="${url}" title="Dismiss toolbar">Dismiss</button>`
-            }
-          </div>
+          <span class="card-dl-metrics"></span>
+          <div class="card-dl-controls"></div>
         </div>
-      </div>
-    `;
-
-    // Wire toolbar buttons
-    const pauseBtn = toolbarContainer.querySelector(".card-tool-btn.pause");
-    if (pauseBtn) {
-      pauseBtn.addEventListener("click", () => {
-        pauseDownload(url);
-      });
+      `;
+      toolbarContainer.appendChild(toolbar);
     }
 
-    const resumeBtn = toolbarContainer.querySelector(".card-tool-btn.resume");
-    if (resumeBtn) {
-      resumeBtn.addEventListener("click", () => {
-        resumeDownload(url);
-      });
-    }
+    const statusEl = toolbar.querySelector(".card-dl-status");
+    const percentEl = toolbar.querySelector(".card-dl-percent");
+    const fillEl = toolbar.querySelector(".card-dl-fill");
+    const metricsEl = toolbar.querySelector(".card-dl-metrics");
+    const controlsEl = toolbar.querySelector(".card-dl-controls");
 
-    const cancelBtn = toolbarContainer.querySelector(".card-tool-btn.cancel");
-    if (cancelBtn) {
-      cancelBtn.addEventListener("click", () => {
-        cancelDownload(url);
-      });
-    }
+    statusEl.className = `card-dl-status ${statusClass}`;
+    statusEl.textContent = statusBadge;
+    percentEl.textContent = percentStr;
 
-    const dismissBtn = toolbarContainer.querySelector(".card-tool-btn.dismiss");
-    if (dismissBtn) {
-      dismissBtn.addEventListener("click", () => {
-        downloadStates.delete(url);
-        updateCardToolbar(url);
-      });
+    fillEl.className = `card-dl-fill ${statusClass}`;
+    fillEl.style.width = `${dl.percent}%`;
+
+    metricsEl.textContent = `${receivedFormatted} / ${totalFormatted}${dl.speed ? ` • ${dl.speed}` : ""}`;
+
+    // Only update buttons when status changes to avoid tearing listeners
+    const currentControlStatus = controlsEl.dataset.status;
+    if (currentControlStatus !== dl.status) {
+      controlsEl.dataset.status = dl.status;
+      controlsEl.innerHTML = "";
+
+      if (!isCompleted && !isError) {
+        const actionBtn = document.createElement("button");
+        actionBtn.className = isPaused ? "card-tool-btn resume" : "card-tool-btn pause";
+        actionBtn.textContent = isPaused ? "▶ Resume" : "⏸ Pause";
+        actionBtn.onclick = () => (isPaused ? resumeDownload(url) : pauseDownload(url));
+        controlsEl.appendChild(actionBtn);
+      }
+
+      if (!isCompleted) {
+        const cancelBtn = document.createElement("button");
+        cancelBtn.className = "card-tool-btn cancel";
+        cancelBtn.textContent = "✕ Cancel";
+        cancelBtn.onclick = () => cancelDownload(url);
+        controlsEl.appendChild(cancelBtn);
+      } else {
+        const dismissBtn = document.createElement("button");
+        dismissBtn.className = "card-tool-btn dismiss";
+        dismissBtn.textContent = "Dismiss";
+        dismissBtn.onclick = () => {
+          downloadStates.delete(url);
+          updateCardToolbar(url);
+        };
+        controlsEl.appendChild(dismissBtn);
+      }
     }
   }
 
@@ -385,11 +393,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         updateCardToolbar(item.url);
       }
     });
-
-    // Auto-scroll so the latest clicked item at the bottom is visible
-    setTimeout(() => {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-    }, 100);
   }
 
   // 5. Trigger download
@@ -479,6 +482,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         downloadStates.set(d.url, d);
         updateCardToolbar(d.url);
       }
+    }
+
+    if (message.action === "TRIGGER_BLOB_SAVE" && message.blobUrl) {
+      const a = document.createElement("a");
+      a.href = message.blobUrl;
+      a.download = message.filename || "video.mp4";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => a.remove(), 2000);
     }
   });
 

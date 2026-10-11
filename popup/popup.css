@@ -421,6 +421,10 @@ body {
   display: none !important;
 }
 
+.card-dl-container {
+  min-height: 0;
+}
+
 /* Card Progress Toolbar */
 .card-dl-toolbar {
   margin-top: 8px;
@@ -431,7 +435,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  animation: fadeIn 0.15s ease-out;
+  min-height: 64px;
+  box-sizing: border-box;
 }
 
 @media (prefers-color-scheme: dark) {

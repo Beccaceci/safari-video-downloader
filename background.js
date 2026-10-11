@@ -306,12 +306,21 @@ class BackgroundStreamDownloadManager {
 
   async deliverCompletedFile(dl, mime) {
     try {
-      // 1. Try chrome.downloads.download using direct URL if it's accessible without auth
-      // OR build Blob and use chrome.downloads.download({ url: blobUrl })
       if (typeof Blob !== "undefined" && typeof URL !== "undefined" && URL.createObjectURL) {
         const blob = new Blob(dl.chunks, { type: mime });
         const blobUrl = URL.createObjectURL(blob);
 
+        // 1. First broadcast to runtime (popup window) so it saves immediately if open
+        chrome.runtime.sendMessage({
+          action: "TRIGGER_BLOB_SAVE",
+          blobUrl: blobUrl,
+          filename: dl.filename
+        }).catch(() => {});
+
+        // 2. Also send to the tab in page context
+        this.fallbackTabSave(dl, blobUrl);
+
+        // 3. And attempt standard chrome.downloads API
         if (chrome.downloads && chrome.downloads.download) {
           chrome.downloads.download(
             {
@@ -319,24 +328,15 @@ class BackgroundStreamDownloadManager {
               filename: dl.filename,
               saveAs: false
             },
-            (downloadId) => {
+            () => {
               if (chrome.runtime.lastError) {
-                console.warn("[SVD Background] chrome.downloads fallback:", chrome.runtime.lastError.message);
-                this.fallbackTabSave(dl, blobUrl);
-              } else {
-                setTimeout(() => {
-                  URL.revokeObjectURL(blobUrl);
-                  dl.chunks = [];
-                }, 60000);
+                console.debug("[SVD Background] chrome.downloads notice:", chrome.runtime.lastError.message);
               }
             }
           );
-          return;
         }
-      }
-
-      // 2. Direct tab trigger fallback
-      if (dl.tabId) {
+      } else if (dl.tabId) {
+        // Fallback for environments without Blob in service worker
         chrome.tabs.sendMessage(dl.tabId, {
           action: "TRIGGER_FILE_SAVE",
           filename: dl.filename,
@@ -354,12 +354,7 @@ class BackgroundStreamDownloadManager {
         action: "TRIGGER_BLOB_SAVE",
         blobUrl: blobUrl,
         filename: dl.filename
-      }, () => {
-        setTimeout(() => {
-          try { URL.revokeObjectURL(blobUrl); } catch (_) {}
-          dl.chunks = [];
-        }, 60000);
-      });
+      }).catch(() => {});
     }
   }
 

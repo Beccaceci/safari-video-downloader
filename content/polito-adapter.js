@@ -14,10 +14,12 @@
   // Cache to avoid repeated fetches of same lecture page
   const resolvedCache = new Map();
 
-  // Clean lecture title
+  // Clean lecture title preserving dates
   function sanitizeName(name) {
-    return (name || "videolezione")
-      .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
+    if (!name) return "videolezione";
+    return name
+      .replace(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/g, "$1-$2-$3") // Convert 09/10/2026 -> 09-10-2026
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
   }
