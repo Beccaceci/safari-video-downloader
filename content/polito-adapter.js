@@ -196,36 +196,12 @@
     });
   }
 
-  // Add floating banner if we are on a lecture playback page with an active video
+  // Register media when on a lecture playback page with an active video
   function checkLecturePlaybackPage() {
     const video = document.querySelector("video");
     if (!video) return;
 
-    if (document.getElementById("svd-polito-floating-bar")) return;
-
-    const bar = document.createElement("div");
-    bar.id = "svd-polito-floating-bar";
-    bar.className = "svd-floating-bar";
-
     const title = resolveCurrentLectureTitle();
-    bar.innerHTML = `
-      <div class="svd-floating-info">
-        <span class="svd-floating-icon">🎓</span>
-        <span class="svd-floating-title">${title}</span>
-      </div>
-      <button class="svd-floating-btn" id="svd-floating-dl-btn">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-        <span>Scarica Videolezione (.mp4)</span>
-      </button>
-    `;
-
-    document.body.appendChild(bar);
-
-    // Notify background with resolved lecture title
     const currentSrc = video.currentSrc || video.src;
     if (currentSrc && !currentSrc.startsWith("blob:")) {
       chrome.runtime.sendMessage({
@@ -238,26 +214,6 @@
         }
       });
     }
-
-    document.getElementById("svd-floating-dl-btn").addEventListener("click", () => {
-      const src = video.currentSrc || video.src;
-      if (src) {
-        const ext = src.includes(".m3u8") ? "m3u8" : "mp4";
-        if (ext === "m3u8") {
-          chrome.runtime.sendMessage({
-            action: "OPEN_HLS_DOWNLOADER",
-            url: src,
-            title: title
-          });
-        } else {
-          chrome.runtime.sendMessage({
-            action: "START_DOWNLOAD",
-            url: src,
-            filename: `${sanitizeName(title)}.mp4`
-          });
-        }
-      }
-    });
   }
 
   function initPoliToAdapter() {

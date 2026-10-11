@@ -344,7 +344,7 @@
       }
 
       toolbar.innerHTML = `
-        <div class="svd-toolbar-header">
+        <div class="svd-toolbar-header" title="Drag to move this toolbar anywhere">
           <div class="svd-toolbar-title-wrap">
             <span class="svd-toolbar-icon">⬇️</span>
             <span class="svd-toolbar-title" title="${dl.filename}">${dl.filename}</span>
@@ -374,15 +374,103 @@
                 : ""
             }
             ${
-              !isCompleted
-                ? `<button class="svd-ctrl-btn cancel-btn" id="svd-page-cancel" title="Cancel Download">
+              isCompleted
+                ? `<button class="svd-ctrl-btn save-btn" id="svd-page-save" title="Save video to Downloads folder">
+                    💾 Save Video
+                   </button>`
+                : `<button class="svd-ctrl-btn cancel-btn" id="svd-page-cancel" title="Cancel Download">
                     ✕ Cancel
                    </button>`
-                : `<button class="svd-ctrl-btn dismiss-btn" id="svd-page-dismiss">Dismiss</button>`
+            }
+            ${
+              isCompleted || isError
+                ? `<button class="svd-ctrl-btn dismiss-btn" id="svd-page-dismiss">Dismiss</button>`
+                : ""
             }
           </div>
         </div>
       `;
+
+      // Enable Drag and Drop on the header
+      const header = toolbar.querySelector(".svd-toolbar-header");
+      if (header && !toolbar.dataset.svdDragInit) {
+        toolbar.dataset.svdDragInit = "true";
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let initialLeft = 0;
+        let initialTop = 0;
+
+        header.addEventListener("pointerdown", (e) => {
+          if (e.target.closest("button")) return;
+          isDragging = true;
+          startX = e.clientX;
+          startY = e.clientY;
+          const rect = toolbar.getBoundingClientRect();
+          initialLeft = rect.left;
+          initialTop = rect.top;
+
+          toolbar.style.bottom = "auto";
+          toolbar.style.right = "auto";
+          toolbar.style.left = `${initialLeft}px`;
+          toolbar.style.top = `${initialTop}px`;
+          header.setPointerCapture(e.pointerId);
+        });
+
+        header.addEventListener("pointermove", (e) => {
+          if (!isDragging) return;
+          const deltaX = e.clientX - startX;
+          const deltaY = e.clientY - startY;
+          toolbar.style.left = `${Math.max(10, Math.min(window.innerWidth - 350, initialLeft + deltaX))}px`;
+          toolbar.style.top = `${Math.max(10, Math.min(window.innerHeight - 100, initialTop + deltaY))}px`;
+        });
+
+        const stopDrag = (e) => {
+          if (isDragging) {
+            isDragging = false;
+            try { header.releasePointerCapture(e.pointerId); } catch (_) {}
+          }
+        };
+
+        header.addEventListener("pointerup", stopDrag);
+        header.addEventListener("pointercancel", stopDrag);
+      }
+
+      // Save button in page toolbar (direct native file save)
+      const saveBtn = toolbar.querySelector("#svd-page-save");
+      if (saveBtn) {
+        saveBtn.addEventListener("click", () => {
+          if (dl.blobUrl) {
+            const a = document.createElement("a");
+            a.href = dl.blobUrl;
+            a.download = dl.filename || "video.mp4";
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => a.remove(), 2000);
+            saveBtn.textContent = "✓ Saved!";
+          } else {
+            chrome.runtime.sendMessage({ action: "GET_BLOB_URL", url: dl.url }, (res) => {
+              if (res && res.blobUrl) {
+                dl.blobUrl = res.blobUrl;
+                const a = document.createElement("a");
+                a.href = res.blobUrl;
+                a.download = res.filename || dl.filename || "video.mp4";
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => a.remove(), 2000);
+              } else {
+                const a = document.createElement("a");
+                a.href = dl.url;
+                a.download = dl.filename || "video.mp4";
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => a.remove(), 2000);
+              }
+              saveBtn.textContent = "✓ Saved!";
+            });
+          }
+        });
+      }
 
       // Event listeners for page toolbar
       const pauseBtn = toolbar.querySelector("#svd-page-pause");

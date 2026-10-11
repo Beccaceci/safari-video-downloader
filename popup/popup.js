@@ -10,6 +10,47 @@ document.addEventListener("DOMContentLoaded", async () => {
   const emptyScanBtn = document.getElementById("empty-scan-btn");
   const downloadAllBtn = document.getElementById("download-all-btn");
   const copyAllBtn = document.getElementById("copy-all-btn");
+  const settingsBtn = document.getElementById("settings-btn");
+  const settingsPanel = document.getElementById("settings-panel");
+  const settingsCloseBtn = document.getElementById("settings-close-btn");
+  const settingsSaveBtn = document.getElementById("settings-save-btn");
+  const settingSubfolderInput = document.getElementById("setting-subfolder");
+
+  let downloadSubfolder = "";
+  try {
+    chrome.storage.local.get(["downloadSubfolder"], (res) => {
+      if (res && res.downloadSubfolder) {
+        downloadSubfolder = res.downloadSubfolder.trim();
+        if (settingSubfolderInput) settingSubfolderInput.value = downloadSubfolder;
+      }
+    });
+  } catch (_) {}
+
+  if (settingsBtn && settingsPanel) {
+    settingsBtn.addEventListener("click", () => {
+      settingsPanel.classList.toggle("hidden");
+    });
+  }
+
+  if (settingsCloseBtn && settingsPanel) {
+    settingsCloseBtn.addEventListener("click", () => {
+      settingsPanel.classList.add("hidden");
+    });
+  }
+
+  if (settingsSaveBtn && settingSubfolderInput) {
+    settingsSaveBtn.addEventListener("click", () => {
+      const val = settingSubfolderInput.value.replace(/[<>:"/\\|?*\x00-\x1F]/g, "").trim();
+      downloadSubfolder = val;
+      chrome.storage.local.set({ downloadSubfolder: val }, () => {
+        settingsSaveBtn.textContent = "Saved!";
+        setTimeout(() => {
+          settingsSaveBtn.textContent = "Save Preferences";
+          if (settingsPanel) settingsPanel.classList.add("hidden");
+        }, 1200);
+      });
+    });
+  }
 
   let activeTab = null;
   let currentItems = [];
@@ -440,7 +481,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 5. Trigger download
   function triggerDownload(item) {
     const ext = (item.ext || "mp4").toLowerCase();
-    const filename = `${sanitizeName(item.title)}.${ext === "m3u8" ? "mp4" : ext}`;
+    const baseName = sanitizeName(item.title);
+    const cleanFilename = `${baseName}.${ext === "m3u8" ? "mp4" : ext}`;
+    const filename = downloadSubfolder ? `${downloadSubfolder}/${cleanFilename}` : cleanFilename;
 
     if (ext === "m3u8") {
       // Open dedicated HLS segment downloader tab
