@@ -585,6 +585,23 @@ body {
   border-color: rgba(255, 59, 48, 0.3);
 }
 
+.card-tool-btn.save {
+  color: #ffffff;
+  background: var(--success);
+  border-color: var(--success);
+  padding: 3px 9px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.card-tool-btn.save:hover {
+  filter: brightness(1.1);
+}
+
+.card-tool-btn.dismiss {
+  color: var(--text-secondary);
+}
+
 .card-tool-btn.dismiss {
   color: var(--text-secondary);
 }

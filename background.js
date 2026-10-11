@@ -158,6 +158,7 @@ class BackgroundStreamDownloadManager {
       totalBytes: dl.totalBytes,
       speed: dl.speed,
       status: dl.status,
+      blobUrl: dl.blobUrl || null,
       error: dl.error
     };
 
@@ -283,13 +284,19 @@ class BackgroundStreamDownloadManager {
       }
 
       // Assembling completed payload
+      const mime = response.headers.get("content-type") || "video/mp4";
+      if (typeof Blob !== "undefined" && typeof URL !== "undefined" && URL.createObjectURL) {
+        const blob = new Blob(dl.chunks, { type: mime });
+        dl.blobUrl = URL.createObjectURL(blob);
+      }
+
       dl.percent = 100;
       dl.status = "completed";
       dl.speed = "";
       this.notify(dl);
 
       // Trigger file save directly
-      await this.deliverCompletedFile(dl, response.headers.get("content-type") || "video/mp4");
+      await this.deliverCompletedFile(dl, mime);
 
     } catch (err) {
       if (err.name === "AbortError" || dl.status === "paused" || dl.status === "cancelled") {

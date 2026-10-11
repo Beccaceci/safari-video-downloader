@@ -188,6 +188,40 @@ document.addEventListener("DOMContentLoaded", async () => {
         cancelBtn.onclick = () => cancelDownload(url);
         controlsEl.appendChild(cancelBtn);
       } else {
+        // Direct Save Video Button (explicit Safari user gesture to save into ~/Downloads/)
+        const saveBtn = document.createElement("button");
+        saveBtn.className = "card-tool-btn save";
+        saveBtn.innerHTML = `<span>💾 Save Video</span>`;
+        saveBtn.title = "Save video directly to your Downloads folder";
+        saveBtn.onclick = () => {
+          if (dl.blobUrl) {
+            const a = document.createElement("a");
+            a.href = dl.blobUrl;
+            a.download = dl.filename || "video.mp4";
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => a.remove(), 2000);
+            saveBtn.innerHTML = `<span>✓ Saved!</span>`;
+          } else {
+            // Trigger direct save via tab or fallback URL
+            chrome.tabs.sendMessage(activeTab.id, {
+              action: "TRIGGER_FILE_SAVE",
+              filename: dl.filename || "video.mp4",
+              url: dl.url
+            }).catch(() => {
+              const a = document.createElement("a");
+              a.href = dl.url;
+              a.download = dl.filename || "video.mp4";
+              a.target = "_blank";
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => a.remove(), 2000);
+            });
+            saveBtn.innerHTML = `<span>✓ Saved!</span>`;
+          }
+        };
+        controlsEl.appendChild(saveBtn);
+
         const dismissBtn = document.createElement("button");
         dismissBtn.className = "card-tool-btn dismiss";
         dismissBtn.textContent = "Dismiss";
