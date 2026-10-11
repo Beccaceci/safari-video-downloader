@@ -167,7 +167,7 @@
       const fullUrl = href ? new URL(href, location.href).href : "";
       const lectureTitle = cleanLectureLinkText(rawText) || "Videolezione";
 
-      // Track click on the link directly
+      // Track click on the link directly so extension popup gets the clean lecture title
       link.addEventListener("click", () => {
         try {
           sessionStorage.setItem("__SVD_LAST_CLICKED_TITLE__", lectureTitle);
@@ -179,84 +179,7 @@
         });
       });
 
-      // If the link directly points to an mp4/m3u8
-      const isDirectMedia = /\.(mp4|m3u8)(\?.*)?$/i.test(fullUrl);
-
-      // Create inline button
-      const btn = document.createElement("button");
-      btn.className = "svd-inline-btn";
-      btn.type = "button";
-      btn.innerHTML = `
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-        <span>Scarica Video</span>
-      `;
-      btn.title = `Scarica "${lectureTitle}" con Safari Video Downloader`;
-
-      btn.addEventListener("click", async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-
-        btn.classList.add("svd-loading");
-        btn.querySelector("span").textContent = "Ricerca stream...";
-
-        let targetVideoUrl = fullUrl;
-        if (!isDirectMedia) {
-          targetVideoUrl = await resolveLectureVideoUrl(fullUrl);
-        }
-
-        btn.classList.remove("svd-loading");
-
-        if (targetVideoUrl) {
-          btn.classList.add("svd-success");
-          btn.querySelector("span").textContent = "Download in corso...";
-
-          const filename = `${sanitizeName(lectureTitle)}.${targetVideoUrl.includes(".m3u8") ? "mp4" : "mp4"}`;
-
-          // Immediately register with background extension list
-          chrome.runtime.sendMessage({
-            action: "ADD_MEDIA",
-            item: {
-              url: targetVideoUrl,
-              title: lectureTitle,
-              ext: targetVideoUrl.includes(".m3u8") ? "m3u8" : "mp4",
-              source: "polito"
-            }
-          });
-
-          if (targetVideoUrl.includes(".m3u8")) {
-            chrome.runtime.sendMessage({
-              action: "OPEN_HLS_DOWNLOADER",
-              url: targetVideoUrl,
-              title: lectureTitle
-            });
-          } else {
-            chrome.runtime.sendMessage({
-              action: "START_DOWNLOAD",
-              url: targetVideoUrl,
-              filename: filename
-            });
-          }
-
-          setTimeout(() => {
-            btn.classList.remove("svd-success");
-            btn.querySelector("span").textContent = "Scarica Video";
-          }, 3000);
-        } else {
-          btn.classList.add("svd-error");
-          btn.querySelector("span").textContent = "Non trovato";
-          setTimeout(() => {
-            btn.classList.remove("svd-error");
-            btn.querySelector("span").textContent = "Scarica Video";
-          }, 3000);
-        }
-      });
-
-      // Insert button right after the link
-      link.insertAdjacentElement("afterend", btn);
+      const isDirectMedia = /\.(mp4|m3u8)(\?.*)?$/i.test(fullUrl) || fullUrl.includes("video.polito.it");
 
       // Pre-resolve and add to background extension badge if possible
       if (isDirectMedia) {
